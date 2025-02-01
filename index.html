@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Rosa Molas</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <style>
+        .chat-container {
+            max-height: calc(100vh - 240px);
+            overflow-y: auto;
+        }
+        .message {
+            max-width: 80%;
+            margin: 8px;
+            padding: 12px;
+            border-radius: 20px;
+        }
+        .user-message {
+            background-color: #E8F0FE;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .assistant-message {
+            background-color: #F8F9FA;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .mic-button {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+        .mic-button.listening {
+            background-color: #DC2626;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header con logo y título -->
+    <header class="bg-white shadow-md p-4 mb-6 fixed top-0 w-full z-10">
+        <div class="container mx-auto flex items-center justify-center gap-4">
+            <img src="logo.png" alt="Logo Rosa Molas" class="h-16 w-auto object-contain">
+            <h1 class="text-2xl font-bold text-blue-900">Asistente Rosa Molas</h1>
+        </div>
+    </header>
+
+    <!-- Contenedor principal con padding-top para el header fijo -->
+    <div class="container mx-auto px-4 pt-28">
+        <div class="chat-container bg-white rounded-lg shadow-lg p-6">
+            <div id="messages" class="space-y-4">
+                <!-- Los mensajes se agregarán aquí -->
+            </div>
+            <div class="mt-4 flex items-center gap-2">
+                <input type="text" id="queryInput" 
+                    class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="Escribe tu pregunta aquí...">
+                <button onclick="sendQuery()" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    Enviar
+                </button>
+                <button onclick="toggleVoiceInput()" class="mic-button text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="responses.js"></script>
+    <script>
+        // Inicializar el reconocimiento de voz
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'es-ES';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        let isListening = false;
+
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            document.getElementById('queryInput').value = text;
+            sendQuery();
+        };
+
+        function toggleVoiceInput() {
+            const micButton = document.querySelector('.mic-button');
+            if (!isListening) {
+                recognition.start();
+                isListening = true;
+                micButton.classList.add('listening');
+            } else {
+                recognition.stop();
+                isListening = false;
+                micButton.classList.remove('listening');
+            }
+        }
+
+        function addMessage(text, isUser) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function sendQuery() {
+            const queryInput = document.getElementById('queryInput');
+            const query = queryInput.value.trim();
+            
+            if (query) {
+                addMessage(query, true);
+                const response = findBestResponse(query);
+                addMessage(response, false);
+                speakText(response);
+                queryInput.value = '';
+            }
+        }
+
+        // Manejar la tecla Enter
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+            }
+        });
+
+        // Mensaje inicial
+        window.onload = () => {
+            addMessage(responses["default"], false);
+        };
+    </script>
+</body>
+</html>
